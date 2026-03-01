@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Neon Wave - Single HTML</title>
+  <style>
+    body { margin:0; background:black; overflow:hidden; font-family:sans-serif; color:cyan; }
+    canvas { display:block; }
+    #score { position:absolute; top:10px; left:10px; font-size:24px; text-shadow:0 0 10px cyan; }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="score">Score: 0</div>
+<script>
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  // Player
+  let player = { x:150, y:canvas.height/2, size:15, speed:4, trail:[] };
+  let holding = false;
+  document.addEventListener("mousedown", ()=>holding=true);
+  document.addEventListener("mouseup", ()=>holding=false);
+  document.addEventListener("keydown", e=>{if(e.code==="Space") holding=true;});
+  document.addEventListener("keyup", e=>{if(e.code==="Space") holding=false;});
+
+  // Obstacles
+  let obstacles = [];
+  let obstacleFreq = 120;
+  let frameCount = 0;
+
+  // Particles
+  let particles = [];
+
+  // Score
+  let score = 0;
+  let highScore = 0;
+
+  // Speed
+  let gameSpeed = 4;
+  let gameOver = false;
+
+  // Background stars
+  let bgStars=[];
+  for(let i=0;i<100;i++){
+    bgStars.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height, size:Math.random()*2+1});
+  }
+
+  function spawnObstacle(){
+    let minGap = 120;
+    let maxGap = 200;
+    let gap = minGap + Math.random()*(maxGap-minGap);
+    let topHeight = Math.random()*(canvas.height-gap-50);
+    let bottomY = topHeight + gap;
+    obstacles.push({x:canvas.width, y:0, width:30, height:topHeight});
+    obstacles.push({x:canvas.width, y:bottomY, width:30, height:canvas.height-bottomY});
+  }
+
+  function addParticles(x,y,color){
+    for(let i=0;i<15;i++){
+      particles.push({x:x, y:y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:30, color:color});
+    }
+  }
+
+  function resetGame(){
+    player.y = canvas.height/2;
+    player.trail = [];
+    obstacles = [];
+    frameCount = 0;
+    score = 0;
+    gameSpeed = 4;
+    gameOver = false;
+  }
+
+  function update(){
+    if(gameOver) return;
+
+    // Wave movement
+    if(holding) player.y -= player.speed;
+    else player.y += player.speed;
+
+    // Keep on screen
+    if(player.y<0) player.y=0;
+    if(player.y>canvas.height-player.size) player.y=canvas.height-player.size;
+
+    // Trail
+    player.trail.push({x:player.x, y:player.y});
+    if(player.trail.length>20) player.trail.shift();
+
+    // Obstacles
+    frameCount++;
+    if(frameCount%obstacleFreq===0) spawnObstacle();
+    obstacles.forEach(ob=>ob.x-=gameSpeed);
+    obstacles = obstacles.filter(ob=>ob.x+ob.width>0);
+
+    // Collision
+    for(let ob of obstacles){
+      if(player.x+player.size>ob.x && player.x<ob.x+ob.width &&
+              player.y+player.size>ob.y && player.y<ob.y+ob.height){
+        addParticles(player.x+player.size/2, player.y+player.size/2, 'cyan');
+        gameOver=true;
+        highScore=Math.max(highScore, score);
+        setTimeout(resetGame, 1000);
+      }
+    }
+
+    // Particles
+    particles.forEach(p=>{p.x+=p.vx; p.y+=p.vy; p.life--;});
+    particles = particles.filter(p=>p.life>0);
+
+    // Score & speed
+    score += 0.1;
+    gameSpeed += 0.002;
+  }
+
+  function draw(){
+    // Background stars
+    ctx.fillStyle="black";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle="white";
+    for(let s of bgStars){
+      ctx.fillRect(s.x, s.y, s.size, s.size);
+      s.x -= 1;
+      if(s.x<0) s.x=canvas.width;
+    }
+
+    // Trail
+    for(let i=0;i<player.trail.length;i++){
+      let p = player.trail[i];
+      ctx.fillStyle=`rgba(0,255,255,${i/player.trail.length})`;
+      ctx.fillRect(p.x,p.y,player.size,player.size);
+    }
+
+    // Player
+    ctx.shadowColor="cyan";
+    ctx.shadowBlur=20;
+    ctx.fillStyle="cyan";
+    ctx.fillRect(player.x, player.y, player.size, player.size);
+    ctx.shadowBlur=0;
+
+    // Obstacles
+    for(let ob of obstacles){
+      ctx.fillStyle="magenta";
+      ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+    }
+
+    // Particles
+    for(let p of particles){
+      ctx.fillStyle=p.color;
+      ctx.fillRect(p.x,p.y,4,4);
+    }
+
+    // Score
+    document.getElementById("score").innerText = `Score: ${Math.floor(score)}  High: ${Math.floor(highScore)}`;
+  }
+
+  function loop(){ update(); draw(); requestAnimationFrame(loop); }
+  loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Neon Dodge: Hardcore Aliens</title>
+    <style>
+        body { margin:0; background:#111; overflow:hidden; font-family:sans-serif; color:cyan; }
+        canvas { display:block; }
+        #score { position:absolute; top:10px; left:10px; font-size:24px; text-shadow:0 0 10px cyan; }
+    </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="score">Score: 0</div>
+<script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Player
+    let player = { x: canvas.width/2, y: canvas.height-100, width:50, height:50, speed:12 };
+
+    // Input
+    let left=false, right=false;
+    document.addEventListener("keydown", e=>{
+        if(e.code==="ArrowLeft") left=true;
+        if(e.code==="ArrowRight") right=true;
+    });
+    document.addEventListener("keyup", e=>{
+        if(e.code==="ArrowLeft") left=false;
+        if(e.code==="ArrowRight") right=false;
+    });
+
+    // Aliens
+    let aliens = [];
+    let frameCount = 0;
+
+    // Particles
+    let particles = [];
+
+    // Score
+    let score=0;
+    let highScore=0;
+
+    // Game speed
+    let gameSpeed = 7;
+    let gameOver = false;
+
+    // Spawn aliens (hardcore)
+    function spawnAlien(){
+        let alienCount = 1 + Math.floor(Math.random()*3); // 1–3 aliens per spawn
+        for(let i=0;i<alienCount;i++){
+            let width = 30 + Math.random()*50; // random width
+            let x = Math.random()*(canvas.width-width);
+            aliens.push({x:x, y:-50, width:width, height:40});
+        }
+    }
+
+    // Particles
+    function addParticles(x,y,color){
+        for(let i=0;i<25;i++){
+            particles.push({
+                x:x, y:y,
+                vx:(Math.random()-0.5)*8,
+                vy:(Math.random()-0.5)*8,
+                life:30, color:color
+            });
+        }
+    }
+
+    // Reset game
+    function resetGame(){
+        player.x = canvas.width/2;
+        aliens=[];
+        frameCount=0;
+        score=0;
+        gameSpeed=7;
+        gameOver=false;
+        particles=[];
+    }
+
+    // Update
+    function update(){
+        if(gameOver) return;
+
+        // Move player
+        if(left) player.x -= player.speed;
+        if(right) player.x += player.speed;
+        if(player.x<0) player.x=0;
+        if(player.x>canvas.width-player.width) player.x=canvas.width-player.width;
+
+        // Spawn aliens faster over time
+        frameCount++;
+        let spawnRate = Math.max(15, 60 - Math.floor(score/5)); // minimum 15 frames
+        if(frameCount % spawnRate === 0) spawnAlien();
+
+        // Move aliens
+        for(let alien of aliens) alien.y += gameSpeed;
+        aliens = aliens.filter(alien => alien.y < canvas.height);
+
+        // Collision detection
+        for(let alien of aliens){
+            if(player.x+player.width > alien.x && player.x < alien.x+alien.width &&
+                player.y+player.height > alien.y && player.y < alien.y+alien.height){
+                addParticles(player.x+player.width/2, player.y+player.height/2, 'cyan');
+                gameOver = true;
+                highScore = Math.max(highScore, score);
+                setTimeout(resetGame,800);
+            }
+        }
+
+        // Update particles
+        for(let p of particles){ p.x+=p.vx; p.y+=p.vy; p.life--; }
+        particles = particles.filter(p=>p.life>0);
+
+        // Increase score & speed
+        score += 0.3;
+        gameSpeed += 0.01; // faster ramp-up
+    }
+
+    // Draw
+    function draw(){
+        // Background gradient
+        let grad = ctx.createLinearGradient(0,0,0,canvas.height);
+        grad.addColorStop(0,"#111");
+        grad.addColorStop(1,"#222");
+        ctx.fillStyle=grad;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        // Draw aliens
+        for(let alien of aliens){
+            ctx.shadowColor="magenta";
+            ctx.shadowBlur=15;
+            ctx.fillStyle="magenta";
+            ctx.fillRect(alien.x, alien.y, alien.width, alien.height);
+            ctx.shadowBlur=0;
+        }
+
+        // Player
+        ctx.shadowColor="cyan";
+        ctx.shadowBlur=20;
+        ctx.fillStyle="cyan";
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+        ctx.shadowBlur=0;
+
+        // Particles
+        for(let p of particles){
+            ctx.fillStyle=p.color;
+            ctx.fillRect(p.x,p.y,4,4);
+        }
+
+        // Score
+        document.getElementById("score").innerText = `Score: ${Math.floor(score)}  High: ${Math.floor(highScore)}`;
+    }
+
+    // Game loop
+    function loop(){ update(); draw(); requestAnimationFrame(loop); }
+    loop();
+</script>
+</body>
+</html>
