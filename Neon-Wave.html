@@ -14,8 +14,11 @@
 <script>
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
+
+  // --- Loader-ready globals ---
   let score = 0;
   let isGameOver = false;
+
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
@@ -34,10 +37,6 @@
 
   // Particles
   let particles = [];
-
-  // Score
-  let score = 0;
-  let highScore = 0;
 
   // Speed
   let gameSpeed = 4;
@@ -73,6 +72,7 @@
     score = 0;
     gameSpeed = 4;
     gameOver = false;
+    isGameOver = false; // reset for loader
   }
 
   function update(){
@@ -99,9 +99,10 @@
     // Collision
     for(let ob of obstacles){
       if(player.x+player.size>ob.x && player.x<ob.x+ob.width &&
-              player.y+player.size>ob.y && player.y<ob.y+ob.height){
+         player.y+player.size>ob.y && player.y<ob.y+ob.height){
         addParticles(player.x+player.size/2, player.y+player.size/2, 'cyan');
-        gameOver=true;
+        gameOver = true;
+        isGameOver = true;   // <-- Loader will detect this
         highScore=Math.max(highScore, score);
         setTimeout(resetGame, 1000);
       }
@@ -162,4 +163,3 @@
 </script>
 </body>
 </html>
-
